@@ -1,1 +1,27 @@
+body {
+  margin: 0;
+  text-align: center;
+  font-family: sans-serif;
+  background: black;
+  color: white;
+}
 
+video, canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.ui {
+  position: fixed;
+  bottom: 10px;
+  width: 100%;
+  z-index: 10;
+}
+
+button, select {
+  font-size: 18px;
+  padding: 10px;
+  margin: 5px;
+}
