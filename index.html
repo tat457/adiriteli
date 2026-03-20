@@ -1,1 +1,57 @@
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas"></canvas>
+<p id="instruction">準備中...</p>
+<p id="result"></p>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+<script>
+const video = document.getElementById("video")
+const instruction = document.getElementById("instruction")
+const result = document.getElementById("result")
+
+// カメラ起動
+navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+  video.srcObject = stream
+})
+
+// 指示
+let currentAction = "jump"
+
+function newInstruction(){
+  const actions = ["jump","squat","left","right"]
+  currentAction = actions[Math.floor(Math.random()*actions.length)]
+  instruction.textContent = "指示: " + currentAction
+}
+
+// 判定（かなり簡易）
+function checkPose(keypoints){
+  const nose = keypoints.find(k=>k.name==="nose")
+  const leftAnkle = keypoints.find(k=>k.name==="left_ankle")
+
+  if(currentAction==="jump"){
+    if(leftAnkle.y < nose.y){
+      result.textContent = "成功！"
+    }
+  }
+}
+
+// ループ
+async function run(){
+  const detector = await poseDetection.createDetector(
+    poseDetection.SupportedModels.MoveNet
+  )
+
+  newInstruction()
+
+  setInterval(async ()=>{
+    const poses = await detector.estimatePoses(video)
+    if(poses[0]){
+      checkPose(poses[0].keypoints)
+    }
+  }, 200)
+}
+
+run()
+</script>
