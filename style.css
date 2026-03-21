@@ -20,6 +20,17 @@ video, canvas {
   z-index: 10;
 }
 
+/* ★文字強化 */
+#instruction {
+  font-size: 30px;
+  font-weight: bold;
+}
+
+#score, #combo {
+  font-size: 22px;
+  font-weight: bold;
+}
+
 button, select {
   font-size: 18px;
   padding: 10px;
