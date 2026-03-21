@@ -20,9 +20,8 @@ video, canvas {
   z-index: 10;
 }
 
-/* ★文字強化 */
 #instruction {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: bold;
 }
 
