@@ -15,9 +15,75 @@ let score = 0
 let combo = 0
 let currentAction = ""
 
+// 内部ロジック用
 const actions = ["jump", "squat", "left", "right"]
 
-// カメラ
+// 表示用（日本語）
+const actionLabels = {
+  jump: "ジャンプ",
+  squat: "しゃがむ",
+  left: "左",
+  right: "右"
+}
+
+// ===== 音 =====
+let audioCtx
+let bgmGain
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+
+  bgmGain = audioCtx.createGain()
+  bgmGain.gain.value = 0.2
+  bgmGain.connect(audioCtx.destination)
+
+  playBGM()
+}
+
+function playBGM() {
+  setInterval(() => {
+    if (!running) return
+
+    const osc = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+
+    osc.type = "square"
+    osc.frequency.value = 220 + Math.random() * 100
+
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3)
+
+    osc.connect(gain)
+    gain.connect(bgmGain)
+
+    osc.start()
+    osc.stop(audioCtx.currentTime + 0.3)
+  }, 300)
+}
+
+function playSE(type) {
+  const osc = audioCtx.createOscillator()
+  const gain = audioCtx.createGain()
+
+  osc.connect(gain)
+  gain.connect(audioCtx.destination)
+
+  if (type === "success") {
+    osc.frequency.value = 600 + combo * 30
+  } else if (type === "fail") {
+    osc.frequency.value = 150
+  } else if (type === "start") {
+    osc.frequency.value = 400
+  }
+
+  gain.gain.setValueAtTime(0.2, audioCtx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2)
+
+  osc.start()
+  osc.stop(audioCtx.currentTime + 0.2)
+}
+
+// ===== カメラ =====
 async function setupCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
   video.srcObject = stream
@@ -30,20 +96,20 @@ async function setupCamera() {
   })
 }
 
-// モデル
+// ===== モデル =====
 async function setupModel() {
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet
   )
 }
 
-// 指示生成
+// ===== 指示 =====
 function newInstruction() {
   currentAction = actions[Math.floor(Math.random() * actions.length)]
-  instructionEl.textContent = "指示: " + currentAction
+  instructionEl.textContent = "指示: " + actionLabels[currentAction]
 }
 
-// 判定
+// ===== 判定 =====
 function checkPose(keypoints) {
   const nose = keypoints.find(k => k.name === "nose")
   const leftAnkle = keypoints.find(k => k.name === "left_ankle")
@@ -55,56 +121,50 @@ function checkPose(keypoints) {
   switch (currentAction) {
     case "jump":
       return leftAnkle.y < nose.y
-
     case "squat":
       return leftHip.y > nose.y
-
     case "left":
       return leftAnkle.x < rightAnkle.x - 50
-
     case "right":
       return rightAnkle.x > leftAnkle.x + 50
   }
 }
 
-// 難易度
-function getInterval() {
-  const diff = difficultySelect.value
-  if (diff === "easy") return 2000
-  if (diff === "normal") return 1400
-  return 900
-}
-
-// スコア処理
+// ===== スコア =====
 function success() {
   combo++
   score += 10 * combo
+
   scoreEl.textContent = "Score: " + score
   comboEl.textContent = "Combo: " + combo
 
   instructionEl.textContent = "成功！"
   flash("green")
+
+  playSE("success")
 }
 
 function fail() {
   combo = 0
   comboEl.textContent = "Combo: 0"
+
   instructionEl.textContent = "ミス！"
   flash("red")
+
+  playSE("fail")
 }
 
-// エフェクト
+// ===== エフェクト =====
 function flash(color) {
   document.body.style.background = color
   setTimeout(() => {
     document.body.style.background = "black"
-  }, 150)
+  }, 120)
 }
 
-// 描画
+// ===== 描画 =====
 function drawKeypoints(keypoints) {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-
   keypoints.forEach(p => {
     if (p.score > 0.3) {
       ctx.beginPath()
@@ -115,7 +175,7 @@ function drawKeypoints(keypoints) {
   })
 }
 
-// メインループ
+// ===== ループ =====
 async function gameLoop() {
   if (!running) return
 
@@ -134,8 +194,17 @@ async function gameLoop() {
   requestAnimationFrame(gameLoop)
 }
 
-// タイマー制御
+// ===== 難易度 =====
+function getInterval() {
+  const diff = difficultySelect.value
+  if (diff === "easy") return 2000
+  if (diff === "normal") return 1300
+  return 800
+}
+
+// ===== スタート =====
 let timer
+
 function startGame() {
   score = 0
   combo = 0
@@ -155,9 +224,13 @@ function startGame() {
   gameLoop()
 }
 
-// 初期化
+// ===== 初期化 =====
 startBtn.onclick = async () => {
+  initAudio()
+  playSE("start")
+
   await setupCamera()
   await setupModel()
+
   startGame()
 }
