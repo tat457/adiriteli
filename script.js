@@ -7,6 +7,7 @@ const scoreEl = document.getElementById("score")
 const comboEl = document.getElementById("combo")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
+const bgm = document.getElementById("bgm")
 
 let detector
 let running = false
@@ -15,10 +16,8 @@ let score = 0
 let combo = 0
 let currentAction = ""
 
-// 内部ロジック用
 const actions = ["jump", "squat", "left", "right"]
 
-// 表示用（日本語）
 const actionLabels = {
   jump: "ジャンプ",
   squat: "しゃがむ",
@@ -26,61 +25,14 @@ const actionLabels = {
   right: "右"
 }
 
-// ===== 音 =====
-let audioCtx
-let bgmGain
-
-function initAudio() {
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-
-  bgmGain = audioCtx.createGain()
-  bgmGain.gain.value = 0.2
-  bgmGain.connect(audioCtx.destination)
-
-  playBGM()
-}
-
-function playBGM() {
-  setInterval(() => {
-    if (!running) return
-
-    const osc = audioCtx.createOscillator()
-    const gain = audioCtx.createGain()
-
-    osc.type = "square"
-    osc.frequency.value = 220 + Math.random() * 100
-
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3)
-
-    osc.connect(gain)
-    gain.connect(bgmGain)
-
-    osc.start()
-    osc.stop(audioCtx.currentTime + 0.3)
-  }, 300)
-}
-
-function playSE(type) {
-  const osc = audioCtx.createOscillator()
-  const gain = audioCtx.createGain()
-
-  osc.connect(gain)
-  gain.connect(audioCtx.destination)
-
-  if (type === "success") {
-    osc.frequency.value = 600 + combo * 30
-  } else if (type === "fail") {
-    osc.frequency.value = 150
-  } else if (type === "start") {
-    osc.frequency.value = 400
-  }
-
-  gain.gain.setValueAtTime(0.2, audioCtx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2)
-
-  osc.start()
-  osc.stop(audioCtx.currentTime + 0.2)
+// ===== 音声（ナイス／ドンマイ）=====
+function speak(text) {
+  const uttr = new SpeechSynthesisUtterance(text)
+  uttr.lang = "ja-JP"
+  uttr.rate = 1
+  uttr.pitch = 1.2
+  speechSynthesis.cancel()
+  speechSynthesis.speak(uttr)
 }
 
 // ===== カメラ =====
@@ -141,7 +93,7 @@ function success() {
   instructionEl.textContent = "成功！"
   flash("green")
 
-  playSE("success")
+  speak("ナイス") // ★音声
 }
 
 function fail() {
@@ -151,7 +103,7 @@ function fail() {
   instructionEl.textContent = "ミス！"
   flash("red")
 
-  playSE("fail")
+  speak("ドンマイ") // ★音声
 }
 
 // ===== エフェクト =====
@@ -226,8 +178,9 @@ function startGame() {
 
 // ===== 初期化 =====
 startBtn.onclick = async () => {
-  initAudio()
-  playSE("start")
+  // ★BGM再生（ユーザー操作後なので確実）
+  bgm.volume = 0.5
+  bgm.play().catch(()=>{})
 
   await setupCamera()
   await setupModel()
