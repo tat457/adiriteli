@@ -7,7 +7,11 @@ const scoreEl = document.getElementById("score")
 const comboEl = document.getElementById("combo")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
+
+// 音
 const bgm = document.getElementById("bgm")
+const seikaiSound = document.getElementById("seikaiSound")
+const huseikaiSound = document.getElementById("huseikaiSound")
 
 let detector
 let running = false
@@ -25,17 +29,13 @@ const actionLabels = {
   right: "右"
 }
 
-// ===== 音声（ナイス／ドンマイ）=====
-function speak(text) {
-  const uttr = new SpeechSynthesisUtterance(text)
-  uttr.lang = "ja-JP"
-  uttr.rate = 1
-  uttr.pitch = 1.2
-  speechSynthesis.cancel()
-  speechSynthesis.speak(uttr)
+// 音再生（確実用）
+function playSound(sound) {
+  sound.currentTime = 0
+  sound.play().catch(()=>{})
 }
 
-// ===== カメラ =====
+// カメラ
 async function setupCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
   video.srcObject = stream
@@ -48,20 +48,20 @@ async function setupCamera() {
   })
 }
 
-// ===== モデル =====
+// モデル
 async function setupModel() {
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet
   )
 }
 
-// ===== 指示 =====
+// 指示
 function newInstruction() {
   currentAction = actions[Math.floor(Math.random() * actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
 }
 
-// ===== 判定 =====
+// 判定
 function checkPose(keypoints) {
   const nose = keypoints.find(k => k.name === "nose")
   const leftAnkle = keypoints.find(k => k.name === "left_ankle")
@@ -82,7 +82,7 @@ function checkPose(keypoints) {
   }
 }
 
-// ===== スコア =====
+// 成功
 function success() {
   combo++
   score += 10 * combo
@@ -90,23 +90,24 @@ function success() {
   scoreEl.textContent = "Score: " + score
   comboEl.textContent = "Combo: " + combo
 
-  instructionEl.textContent = "成功！"
+  instructionEl.textContent = "成功"
   flash("green")
 
-  speak("ナイス") // ★音声
+  playSound(seikaiSound)
 }
 
+// 失敗
 function fail() {
   combo = 0
   comboEl.textContent = "Combo: 0"
 
-  instructionEl.textContent = "ミス！"
+  instructionEl.textContent = "失敗"
   flash("red")
 
-  speak("ドンマイ") // ★音声
+  playSound(huseikaiSound)
 }
 
-// ===== エフェクト =====
+// エフェクト
 function flash(color) {
   document.body.style.background = color
   setTimeout(() => {
@@ -114,7 +115,7 @@ function flash(color) {
   }, 120)
 }
 
-// ===== 描画 =====
+// 描画
 function drawKeypoints(keypoints) {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   keypoints.forEach(p => {
@@ -127,7 +128,7 @@ function drawKeypoints(keypoints) {
   })
 }
 
-// ===== ループ =====
+// ループ
 async function gameLoop() {
   if (!running) return
 
@@ -146,7 +147,7 @@ async function gameLoop() {
   requestAnimationFrame(gameLoop)
 }
 
-// ===== 難易度 =====
+// 難易度
 function getInterval() {
   const diff = difficultySelect.value
   if (diff === "easy") return 2000
@@ -154,7 +155,7 @@ function getInterval() {
   return 800
 }
 
-// ===== スタート =====
+// スタート
 let timer
 
 function startGame() {
@@ -176,9 +177,9 @@ function startGame() {
   gameLoop()
 }
 
-// ===== 初期化 =====
+// 初期化
 startBtn.onclick = async () => {
-  // ★BGM再生（ユーザー操作後なので確実）
+  // BGM再生（確実）
   bgm.volume = 0.5
   bgm.play().catch(()=>{})
 
