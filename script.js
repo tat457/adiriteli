@@ -8,17 +8,19 @@ const comboEl = document.getElementById("combo")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
 
-// 音
 const bgm = document.getElementById("bgm")
 const seikaiSound = document.getElementById("seikaiSound")
 const huseikaiSound = document.getElementById("huseikaiSound")
 
 let detector
 let running = false
+let judging = false
 
 let score = 0
 let combo = 0
 let currentAction = ""
+
+let holdStartTime = null // ★ここ重要
 
 const actions = ["jump", "squat", "left", "right"]
 
@@ -29,7 +31,7 @@ const actionLabels = {
   right: "右"
 }
 
-// 音再生（確実用）
+// 音
 function playSound(sound) {
   sound.currentTime = 0
   sound.play().catch(()=>{})
@@ -59,9 +61,11 @@ async function setupModel() {
 function newInstruction() {
   currentAction = actions[Math.floor(Math.random() * actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
+  judging = true
+  holdStartTime = null // リセット
 }
 
-// 判定
+// 判定（厳しめ）
 function checkPose(keypoints) {
   const nose = keypoints.find(k => k.name === "nose")
   const leftAnkle = keypoints.find(k => k.name === "left_ankle")
@@ -72,18 +76,39 @@ function checkPose(keypoints) {
 
   switch (currentAction) {
     case "jump":
-      return leftAnkle.y < nose.y
+      return (nose.y - leftAnkle.y) > 80
+
     case "squat":
-      return leftHip.y > nose.y
+      return (leftHip.y - nose.y) > 60
+
     case "left":
-      return leftAnkle.x < rightAnkle.x - 50
+      return (rightAnkle.x - leftAnkle.x) > 120
+
     case "right":
-      return rightAnkle.x > leftAnkle.x + 50
+      return (rightAnkle.x - leftAnkle.x) > 120
+  }
+}
+
+// ★0.3秒維持判定
+function checkHold(isCorrect) {
+  const now = Date.now()
+
+  if (isCorrect) {
+    if (!holdStartTime) {
+      holdStartTime = now
+    } else if (now - holdStartTime > 300) {
+      success()
+    }
+  } else {
+    holdStartTime = null
   }
 }
 
 // 成功
 function success() {
+  judging = false
+  holdStartTime = null
+
   combo++
   score += 10 * combo
 
@@ -92,19 +117,31 @@ function success() {
 
   instructionEl.textContent = "成功"
   flash("green")
-
   playSound(seikaiSound)
+
+  nextInstructionDelay()
 }
 
 // 失敗
 function fail() {
+  judging = false
+  holdStartTime = null
+
   combo = 0
   comboEl.textContent = "Combo: 0"
 
   instructionEl.textContent = "失敗"
   flash("red")
-
   playSound(huseikaiSound)
+
+  nextInstructionDelay()
+}
+
+// インターバル
+function nextInstructionDelay() {
+  setTimeout(() => {
+    if (running) newInstruction()
+  }, 800)
 }
 
 // エフェクト
@@ -119,7 +156,7 @@ function flash(color) {
 function drawKeypoints(keypoints) {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   keypoints.forEach(p => {
-    if (p.score > 0.3) {
+    if (p.score > 0.4) {
       ctx.beginPath()
       ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
       ctx.fillStyle = "lime"
@@ -134,14 +171,12 @@ async function gameLoop() {
 
   const poses = await detector.estimatePoses(video)
 
-  if (poses[0]) {
+  if (poses[0] && judging) {
     const keypoints = poses[0].keypoints
     drawKeypoints(keypoints)
 
-    if (checkPose(keypoints)) {
-      success()
-      newInstruction()
-    }
+    const isCorrect = checkPose(keypoints)
+    checkHold(isCorrect)
   }
 
   requestAnimationFrame(gameLoop)
@@ -150,12 +185,12 @@ async function gameLoop() {
 // 難易度
 function getInterval() {
   const diff = difficultySelect.value
-  if (diff === "easy") return 2000
-  if (diff === "normal") return 1300
-  return 800
+  if (diff === "easy") return 2500
+  if (diff === "normal") return 1800
+  return 1200
 }
 
-// スタート
+// タイマー
 let timer
 
 function startGame() {
@@ -170,8 +205,7 @@ function startGame() {
 
   clearInterval(timer)
   timer = setInterval(() => {
-    fail()
-    newInstruction()
+    if (judging) fail()
   }, getInterval())
 
   gameLoop()
@@ -179,7 +213,6 @@ function startGame() {
 
 // 初期化
 startBtn.onclick = async () => {
-  // BGM再生（確実）
   bgm.volume = 0.5
   bgm.play().catch(()=>{})
 
