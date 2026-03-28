@@ -76,9 +76,9 @@ function checkPose(keypoints) {
     case "squat":
       return leftHip.y > nose.y
     case "left":
-      return leftAnkle.x < rightAnkle.x - 50
-    case "right":
-      return rightAnkle.x > leftAnkle.x + 50
+  　　　return leftAnkle.x > rightAnkle.x + 50
+　　　case "right":
+  　　　return rightAnkle.x < leftAnkle.x - 50
   }
 }
 
