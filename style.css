@@ -1,23 +1,36 @@
 body {
   margin: 0;
-  text-align: center;
   background: black;
-  color: white;
+  overflow: hidden;
   font-family: sans-serif;
+  color: white;
 }
 
+/* ★ここが超重要 */
 video, canvas {
   position: absolute;
-  width: 100%;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
 }
 
+/* UI */
 .ui {
   position: fixed;
   bottom: 10px;
   width: 100%;
+  text-align: center;
+  z-index: 10;
 }
 
 p {
   font-size: 22px;
   font-weight: bold;
+}
+
+button {
+  font-size: 20px;
+  padding: 10px 20px;
 }
