@@ -8,6 +8,10 @@ const comboEl = document.getElementById("combo")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
 
+// ★追加
+let timeLeft = 60
+let timeEl
+
 const bgm = document.getElementById("bgm")
 const seikaiSound = document.getElementById("seikaiSound")
 const huseikaiSound = document.getElementById("huseikaiSound")
@@ -51,10 +55,7 @@ function flash(color){
   const el = document.getElementById("flashEffect")
   el.style.background = color
   el.style.opacity = 0.6
-
-  setTimeout(()=>{
-    el.style.opacity = 0
-  }, 200)
+  setTimeout(()=> el.style.opacity = 0, 200)
 }
 
 // ===== 音 =====
@@ -94,7 +95,6 @@ function setBasePose(kp){
   if(lHip && rHip && conf(lHip)>0.3 && conf(rHip)>0.3){
     const hipY = (lHip.y + rHip.y)/2
     const hipX = (lHip.x + rHip.x)/2
-
     if(baseHipY===null) baseHipY = hipY
     if(baseHipX===null) baseHipX = hipX
   }
@@ -109,7 +109,6 @@ function setBasePose(kp){
 function newInstruction(){
   currentAction = actions[Math.floor(Math.random()*actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
-
   judging = true
   holdStartTime = null
   isTransition = false
@@ -141,27 +140,14 @@ function checkPose(kp){
   switch(currentAction){
     case "jump": return ankleMove > 30 || hipMoveY < -30
     case "squat": return hipMoveY > 30
-    case "left": return hipMoveX > 40   // ★反転済み
+    case "left": return hipMoveX > 40
     case "right": return hipMoveX < -40
-  }
-}
-
-// ===== 0.3秒維持 =====
-function checkHold(ok){
-  const now = Date.now()
-
-  if(ok){
-    if(!holdStartTime) holdStartTime = now
-    else if(now - holdStartTime > 300) success()
-  } else {
-    holdStartTime = null
   }
 }
 
 // ===== 成功 =====
 function success(){
   if(isTransition) return
-
   judging = false
   isTransition = true
 
@@ -175,15 +161,12 @@ function success(){
   flash("lime")
   playSound(seikaiSound)
 
-  setTimeout(()=>{
-    if(running) newInstruction()
-  }, 1000)
+  setTimeout(()=> running && newInstruction(), 1000)
 }
 
 // ===== 失敗 =====
 function fail(){
   if(isTransition) return
-
   judging = false
   isTransition = true
 
@@ -194,15 +177,12 @@ function fail(){
   flash("red")
   playSound(huseikaiSound)
 
-  setTimeout(()=>{
-    if(running) newInstruction()
-  }, 1000)
+  setTimeout(()=> running && newInstruction(), 1000)
 }
 
 // ===== 描画 =====
 function drawKeypoints(kp){
   ctx.clearRect(0,0,canvas.width,canvas.height)
-
   kp.forEach(p=>{
     if(conf(p)>0.2){
       ctx.beginPath()
@@ -218,10 +198,8 @@ async function gameLoop(){
   if(!running) return
 
   const poses = await detector.estimatePoses(video)
-
   if(poses[0]){
     const kp = poses[0].keypoints
-
     drawKeypoints(kp)
     setBasePose(kp)
 
@@ -231,7 +209,7 @@ async function gameLoop(){
     }
 
     if(judging && !isTransition){
-      checkHold(checkPose(kp))
+      if(checkPose(kp)) success()
     }
   }
 
@@ -247,11 +225,13 @@ function getInterval(){
 }
 
 let timer
+let countdown
 
 function startGame(){
   score=0
   combo=0
   running=true
+  timeLeft=60
 
   baseHipY=null
   baseHipX=null
@@ -259,6 +239,27 @@ function startGame(){
 
   scoreEl.textContent="Score: 0"
   comboEl.textContent="Combo: 0"
+
+  // ★時間表示生成
+  if(!timeEl){
+    timeEl = document.createElement("p")
+    timeEl.style.fontSize = "26px"
+    timeEl.style.fontWeight = "bold"
+    document.querySelector(".ui").appendChild(timeEl)
+  }
+
+  timeEl.textContent = "残り時間: 60秒"
+
+  // ★カウントダウン
+  clearInterval(countdown)
+  countdown = setInterval(()=>{
+    timeLeft--
+    timeEl.textContent = "残り時間: " + timeLeft + "秒"
+
+    if(timeLeft <= 0){
+      endGame()
+    }
+  },1000)
 
   newInstruction()
 
@@ -268,6 +269,17 @@ function startGame(){
   }, getInterval())
 
   gameLoop()
+}
+
+// ===== 終了 =====
+function endGame(){
+  running=false
+  judging=false
+
+  clearInterval(timer)
+  clearInterval(countdown)
+
+  instructionEl.textContent = "終了！スコア: " + score
 }
 
 // ===== スタート =====
