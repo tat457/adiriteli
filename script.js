@@ -43,7 +43,7 @@ const KP = {
 }
 
 function conf(p){
-  return p?.score ?? p?.confidence ?? 0
+  return p?.score ?? 0
 }
 
 // ===== フラッシュ =====
@@ -51,10 +51,7 @@ function flash(color){
   const el = document.getElementById("flashEffect")
   el.style.background = color
   el.style.opacity = 0.6
-
-  setTimeout(()=>{
-    el.style.opacity = 0
-  }, 200)
+  setTimeout(()=> el.style.opacity = 0, 200)
 }
 
 // ===== 音 =====
@@ -63,11 +60,15 @@ function playSound(sound){
   sound.play().catch(()=>{})
 }
 
-// ===== カメラ =====
+// ===== カメラ（安定化）=====
 async function setupCamera(){
   const stream = await navigator.mediaDevices.getUserMedia({
-  video: { facingMode: "user" }
-})
+    video: {
+      facingMode: "user",
+      width: 640,
+      height: 480
+    }
+  })
   video.srcObject = stream
 
   return new Promise(resolve=>{
@@ -79,10 +80,13 @@ async function setupCamera(){
   })
 }
 
-// ===== モデル =====
+// ===== モデル（安定版）=====
 async function setupModel(){
   detector = await poseDetection.createDetector(
-    poseDetection.SupportedModels.MoveNet
+    poseDetection.SupportedModels.MoveNet,
+    {
+      modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+    }
   )
 }
 
@@ -111,7 +115,6 @@ function setBasePose(kp){
 function newInstruction(){
   currentAction = actions[Math.floor(Math.random()*actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
-
   judging = true
   holdStartTime = null
   isTransition = false
@@ -125,8 +128,6 @@ function checkPose(kp){
   const rHip = kp[KP.RIGHT_HIP]
   const lAnk = kp[KP.LEFT_ANKLE]
   const rAnk = kp[KP.RIGHT_ANKLE]
-
-  if(!lHip || !rHip) return false
 
   const hipY = (lHip.y + rHip.y)/2
   const hipX = (lHip.x + rHip.x)/2
@@ -143,7 +144,7 @@ function checkPose(kp){
   switch(currentAction){
     case "jump": return ankleMove > 30 || hipMoveY < -30
     case "squat": return hipMoveY > 30
-    case "left": return hipMoveX > 40   // ★反転済み
+    case "left": return hipMoveX > 40
     case "right": return hipMoveX < -40
   }
 }
@@ -151,7 +152,6 @@ function checkPose(kp){
 // ===== 0.3秒維持 =====
 function checkHold(ok){
   const now = Date.now()
-
   if(ok){
     if(!holdStartTime) holdStartTime = now
     else if(now - holdStartTime > 300) success()
@@ -163,7 +163,6 @@ function checkHold(ok){
 // ===== 成功 =====
 function success(){
   if(isTransition) return
-
   judging = false
   isTransition = true
 
@@ -177,15 +176,12 @@ function success(){
   flash("lime")
   playSound(seikaiSound)
 
-  setTimeout(()=>{
-    if(running) newInstruction()
-  }, 1000)
+  setTimeout(()=> running && newInstruction(), 1000)
 }
 
 // ===== 失敗 =====
 function fail(){
   if(isTransition) return
-
   judging = false
   isTransition = true
 
@@ -196,9 +192,7 @@ function fail(){
   flash("red")
   playSound(huseikaiSound)
 
-  setTimeout(()=>{
-    if(running) newInstruction()
-  }, 1000)
+  setTimeout(()=> running && newInstruction(), 1000)
 }
 
 // ===== 描画 =====
@@ -208,38 +202,40 @@ function drawKeypoints(kp){
   kp.forEach(p=>{
     if(conf(p)>0.2){
       ctx.beginPath()
-
-      // ★これに戻す
       ctx.arc(p.x, p.y, 6, 0, Math.PI*2)
-
       ctx.fillStyle="lime"
       ctx.fill()
     }
   })
 }
 
-// ===== ループ =====
+// ===== ループ（フリーズ対策入り）=====
 async function gameLoop(){
   if(!running) return
 
-  console.log("detecting") // ←ここ（OK）
-  
-  const poses = await detector.estimatePoses(video)
+  try{
+    const poses = await detector.estimatePoses(video)
 
-  if(poses[0]){
-    const kp = poses[0].keypoints
+    if(poses[0]){
+      const kp = poses[0].keypoints
 
-    drawKeypoints(kp)
-    setBasePose(kp)
+      drawKeypoints(kp)
+      setBasePose(kp)
 
-    if(baseHipY===null){
-      instructionEl.textContent="そのまま立つ"
-      return
+      if(baseHipY===null){
+        instructionEl.textContent="そのまま立つ"
+        requestAnimationFrame(gameLoop)
+        return
+      }
+
+      if(judging && !isTransition){
+        checkHold(checkPose(kp))
+      }
     }
 
-    if(judging && !isTransition){
-      checkHold(checkPose(kp))
-    }
+  } catch(e){
+    console.log("推論エラー→再初期化")
+    await setupModel()
   }
 
   requestAnimationFrame(gameLoop)
@@ -259,25 +255,24 @@ function startGame(){
   running = false
   judging = false
   isTransition = false
-  
+
   clearInterval(timer)
-  timer = null  
-  
-  score=0
-  combo=0
-  running=true
+  timer = null
 
-  baseHipY=null
-  baseHipX=null
-  baseAnkleY=null
+  score = 0
+  combo = 0
+  running = true
 
-  scoreEl.textContent="Score: 0"
-  comboEl.textContent="Combo: 0"
+  baseHipY = null
+  baseHipX = null
+  baseAnkleY = null
+
+  scoreEl.textContent = "Score: 0"
+  comboEl.textContent = "Combo: 0"
 
   newInstruction()
 
-  clearInterval(timer)
-  timer=setInterval(()=>{
+  timer = setInterval(()=>{
     if(judging && !isTransition) fail()
   }, getInterval())
 
@@ -286,7 +281,7 @@ function startGame(){
 
 // ===== スタート =====
 startBtn.onclick = async ()=>{
-  bgm.volume=0.5
+  bgm.volume = 0.5
   bgm.play().catch(()=>{})
 
   await setupCamera()
