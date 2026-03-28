@@ -29,6 +29,13 @@ let timeInterval = null
 
 const actions = ["jump","squat","left","right"]
 
+const actionLabels = {
+  jump: "ジャンプ",
+  squat: "しゃがむ",
+  left: "左",
+  right: "右"
+}
+
 function conf(p){ return p?.score ?? p?.confidence ?? 0 }
 
 // ===== カメラ =====
@@ -38,10 +45,8 @@ async function setupCamera(){
 
   return new Promise(resolve=>{
     video.onloadedmetadata = ()=>{
-      // ★これで黒バグ完全回避
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-
       resolve()
     }
   })
@@ -54,7 +59,7 @@ async function setupModel(){
   )
 }
 
-// ===== 基準 =====
+// ===== 基準取得 =====
 function setBasePose(kp){
   const lHip = kp.find(p=>p.name==="left_hip")
   const rHip = kp.find(p=>p.name==="right_hip")
@@ -76,7 +81,7 @@ function setBasePose(kp){
 // ===== 指示 =====
 function newInstruction(){
   currentAction = actions[Math.floor(Math.random()*actions.length)]
-  instructionEl.textContent = "指示"
+  instructionEl.textContent = "指示: " + actionLabels[currentAction]
   judging = true
   holdStartTime = null
 }
@@ -112,7 +117,7 @@ function checkPose(kp){
   }
 }
 
-// ===== 0.3秒 =====
+// ===== 0.3秒維持 =====
 function checkHold(ok){
   const now = Date.now()
   if(ok){
@@ -123,7 +128,7 @@ function checkHold(ok){
   }
 }
 
-// ===== 成功失敗 =====
+// ===== 成功 / 失敗 =====
 function success(){
   judging=false
   combo++
@@ -172,7 +177,7 @@ function endGame(){
   clearInterval(timeInterval)
 }
 
-// ===== 描画（ズレ完全修正）=====
+// ===== 描画 =====
 function draw(kp){
   ctx.clearRect(0,0,canvas.width,canvas.height)
 
@@ -202,13 +207,12 @@ async function loop(){
     draw(kp)
     setBasePose(kp)
 
+    // ★ここが修正ポイント
     if(!baseHip){
-      instructionEl.textContent="中央に立つ（全身）"
-      return
-    }
-
-    if(judging){
-      checkHold(checkPose(kp))
+      instructionEl.textContent="中央に立つ（腰が映る）"
+    } else {
+      if(!judging) newInstruction()
+      if(judging) checkHold(checkPose(kp))
     }
   }
 
@@ -230,7 +234,6 @@ document.getElementById("startBtn").onclick=async()=>{
   scoreEl.textContent="Score:0"
   comboEl.textContent="Combo:0"
 
-  newInstruction()
   startTimer()
   loop()
 }
