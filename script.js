@@ -135,7 +135,7 @@ function checkPose(kp){
 
   switch(currentAction){
     case "jump":
-      return ankleMove > 45 && hipMoveY < -15 // ★ここ修正
+  　　　return ankleMove > 20 && hipMoveY < -20
 
     case "squat":
       return hipMoveY > 35
