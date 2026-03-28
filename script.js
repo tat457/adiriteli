@@ -42,9 +42,7 @@ const KP = {
   RIGHT_ANKLE: 16
 }
 
-function conf(p){
-  return p?.score ?? 0
-}
+function conf(p){ return p?.score ?? 0 }
 
 // ===== フラッシュ =====
 function flash(color){
@@ -60,14 +58,10 @@ function playSound(sound){
   sound.play().catch(()=>{})
 }
 
-// ===== カメラ（安定化）=====
+// ===== カメラ =====
 async function setupCamera(){
   const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: "user",
-      width: 640,
-      height: 480
-    }
+    video:{ facingMode:"user", width:640, height:480 }
   })
   video.srcObject = stream
 
@@ -80,13 +74,11 @@ async function setupCamera(){
   })
 }
 
-// ===== モデル（安定版）=====
+// ===== モデル =====
 async function setupModel(){
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet,
-    {
-      modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
-    }
+    { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
   )
 }
 
@@ -120,7 +112,7 @@ function newInstruction(){
   isTransition = false
 }
 
-// ===== 判定 =====
+// ===== 判定（修正版）=====
 function checkPose(kp){
   if(baseHipY===null) return false
 
@@ -142,10 +134,17 @@ function checkPose(kp){
   }
 
   switch(currentAction){
-    case "jump": return ankleMove > 30 || hipMoveY < -30
-    case "squat": return hipMoveY > 30
-    case "left": return hipMoveX > 40
-    case "right": return hipMoveX < -40
+    case "jump":
+      return ankleMove > 45 && hipMoveY < -15 // ★ここ修正
+
+    case "squat":
+      return hipMoveY > 35
+
+    case "left":
+      return hipMoveX > 40
+
+    case "right":
+      return hipMoveX < -40
   }
 }
 
@@ -198,7 +197,6 @@ function fail(){
 // ===== 描画 =====
 function drawKeypoints(kp){
   ctx.clearRect(0,0,canvas.width,canvas.height)
-
   kp.forEach(p=>{
     if(conf(p)>0.2){
       ctx.beginPath()
@@ -209,7 +207,7 @@ function drawKeypoints(kp){
   })
 }
 
-// ===== ループ（フリーズ対策入り）=====
+// ===== ループ =====
 async function gameLoop(){
   if(!running) return
 
@@ -222,19 +220,12 @@ async function gameLoop(){
       drawKeypoints(kp)
       setBasePose(kp)
 
-      if(baseHipY===null){
-        instructionEl.textContent="そのまま立つ"
-        requestAnimationFrame(gameLoop)
-        return
-      }
-
       if(judging && !isTransition){
         checkHold(checkPose(kp))
       }
     }
 
-  } catch(e){
-    console.log("推論エラー→再初期化")
+  }catch(e){
     await setupModel()
   }
 
@@ -252,16 +243,14 @@ function getInterval(){
 let timer
 
 function startGame(){
-  running = false
+  clearInterval(timer)
+
+  running = true
   judging = false
   isTransition = false
 
-  clearInterval(timer)
-  timer = null
-
   score = 0
   combo = 0
-  running = true
 
   baseHipY = null
   baseHipX = null
