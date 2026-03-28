@@ -5,7 +5,7 @@ const ctx = canvas.getContext("2d")
 const instructionEl = document.getElementById("instruction")
 const scoreEl = document.getElementById("score")
 const comboEl = document.getElementById("combo")
-const timeEl = document.getElementById("time") // ★追加
+const timeEl = document.getElementById("time")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
 
@@ -21,10 +21,8 @@ let score = 0
 let combo = 0
 let currentAction = ""
 let holdStartTime = null
-
 let basePose = null
 
-// ★時間管理
 const GAME_TIME = 120000
 let gameStartTime = 0
 let timeInterval = null
@@ -38,11 +36,13 @@ const actionLabels = {
   right: "右"
 }
 
+// ===== 音 =====
 function playSound(sound) {
   sound.currentTime = 0
   sound.play().catch(()=>{})
 }
 
+// ===== カメラ =====
 async function setupCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
   video.srcObject = stream
@@ -55,27 +55,30 @@ async function setupCamera() {
   })
 }
 
+// ===== モデル =====
 async function setupModel() {
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet
   )
 }
 
+// ===== 基準姿勢 =====
 function setBasePose(keypoints) {
-  const leftHip = keypoints.find(k => k.name === "left_hip")
-  const rightHip = keypoints.find(k => k.name === "right_hip")
-  const leftAnkle = keypoints.find(k => k.name === "left_ankle")
-  const rightAnkle = keypoints.find(k => k.name === "right_ankle")
+  const lHip = keypoints.find(k => k.name === "left_hip")
+  const rHip = keypoints.find(k => k.name === "right_hip")
+  const lAnk = keypoints.find(k => k.name === "left_ankle")
+  const rAnk = keypoints.find(k => k.name === "right_ankle")
 
-  if (leftHip && rightHip && leftAnkle && rightAnkle) {
+  if (lHip && rHip && lAnk && rAnk) {
     basePose = {
-      hipY: (leftHip.y + rightHip.y) / 2,
-      ankleY: (leftAnkle.y + rightAnkle.y) / 2,
-      hipX: (leftHip.x + rightHip.x) / 2
+      hipY: (lHip.y + rHip.y) / 2,
+      ankleY: (lAnk.y + rAnk.y) / 2,
+      hipX: (lHip.x + rHip.x) / 2
     }
   }
 }
 
+// ===== 指示 =====
 function newInstruction() {
   currentAction = actions[Math.floor(Math.random() * actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
@@ -83,19 +86,20 @@ function newInstruction() {
   holdStartTime = null
 }
 
+// ===== 判定 =====
 function checkPose(keypoints) {
   if (!basePose) return false
 
-  const leftHip = keypoints.find(k => k.name === "left_hip")
-  const rightHip = keypoints.find(k => k.name === "right_hip")
-  const leftAnkle = keypoints.find(k => k.name === "left_ankle")
-  const rightAnkle = keypoints.find(k => k.name === "right_ankle")
+  const lHip = keypoints.find(k => k.name === "left_hip")
+  const rHip = keypoints.find(k => k.name === "right_hip")
+  const lAnk = keypoints.find(k => k.name === "left_ankle")
+  const rAnk = keypoints.find(k => k.name === "right_ankle")
 
-  if (!leftHip || !rightHip || !leftAnkle || !rightAnkle) return false
+  if (!lHip || !rHip || !lAnk || !rAnk) return false
 
-  const hipY = (leftHip.y + rightHip.y) / 2
-  const ankleY = (leftAnkle.y + rightAnkle.y) / 2
-  const hipX = (leftHip.x + rightHip.x) / 2
+  const hipY = (lHip.y + rHip.y) / 2
+  const ankleY = (lAnk.y + rAnk.y) / 2
+  const hipX = (lHip.x + rHip.x) / 2
 
   const hipMoveY = hipY - basePose.hipY
   const ankleMoveY = basePose.ankleY - ankleY
@@ -109,9 +113,10 @@ function checkPose(keypoints) {
   }
 }
 
-function checkHold(isCorrect) {
+// ===== 0.3秒維持 =====
+function checkHold(ok) {
   const now = Date.now()
-  if (isCorrect) {
+  if (ok) {
     if (!holdStartTime) holdStartTime = now
     else if (now - holdStartTime > 300) success()
   } else {
@@ -119,59 +124,39 @@ function checkHold(isCorrect) {
   }
 }
 
+// ===== 成功 / 失敗 =====
 function success() {
   judging = false
-  holdStartTime = null
-
   combo++
   score += 10 * combo
-
   scoreEl.textContent = "Score: " + score
   comboEl.textContent = "Combo: " + combo
-
   instructionEl.textContent = "成功"
-  flash("green")
   playSound(seikaiSound)
-
-  nextInstructionDelay()
+  setTimeout(newInstruction, 800)
 }
 
 function fail() {
   judging = false
-  holdStartTime = null
-
   combo = 0
   comboEl.textContent = "Combo: 0"
-
   instructionEl.textContent = "失敗"
-  flash("red")
   playSound(huseikaiSound)
-
-  nextInstructionDelay()
+  setTimeout(newInstruction, 800)
 }
 
-function nextInstructionDelay() {
-  setTimeout(() => {
-    if (running) newInstruction()
-  }, 800)
-}
-
-// ★時間フォーマット
+// ===== 時間 =====
 function formatTime(ms) {
-  const totalSec = Math.ceil(ms / 1000)
-  const min = Math.floor(totalSec / 60)
-  const sec = totalSec % 60
-  return min + ":" + (sec < 10 ? "0" : "") + sec
+  const s = Math.ceil(ms / 1000)
+  const m = Math.floor(s / 60)
+  const ss = s % 60
+  return m + ":" + (ss < 10 ? "0" : "") + ss
 }
 
-// ★カウント更新
 function startTimer() {
   gameStartTime = Date.now()
-
   timeInterval = setInterval(() => {
-    const elapsed = Date.now() - gameStartTime
-    const remain = GAME_TIME - elapsed
-
+    const remain = GAME_TIME - (Date.now() - gameStartTime)
     if (remain <= 0) {
       timeEl.textContent = "Time: 0:00"
       endGame()
@@ -183,116 +168,115 @@ function startTimer() {
 
 function endGame() {
   running = false
-  judging = false
-
   instructionEl.textContent = "終了！スコア: " + score
-
   bgm.pause()
-  clearInterval(timer)
   clearInterval(timeInterval)
 }
 
-function flash(color) {
-  document.body.style.background = color
-  setTimeout(() => {
-    document.body.style.background = "black"
-  }, 120)
-}
+// ===== 骨格線 =====
+function drawSkeleton(kp) {
+  const pairs = [
+    ["left_shoulder","right_shoulder"],
+    ["left_shoulder","left_elbow"],
+    ["left_elbow","left_wrist"],
+    ["right_shoulder","right_elbow"],
+    ["right_elbow","right_wrist"],
+    ["left_hip","right_hip"],
+    ["left_shoulder","left_hip"],
+    ["right_shoulder","right_hip"],
+    ["left_hip","left_knee"],
+    ["left_knee","left_ankle"],
+    ["right_hip","right_knee"],
+    ["right_knee","right_ankle"]
+  ]
 
-function drawGuide() {
-  ctx.strokeStyle = "yellow"
+  ctx.strokeStyle = "lime"
   ctx.lineWidth = 2
 
-  ctx.beginPath()
-  ctx.moveTo(canvas.width / 2, 0)
-  ctx.lineTo(canvas.width / 2, canvas.height)
-  ctx.stroke()
+  pairs.forEach(([a,b])=>{
+    const p1 = kp.find(p=>p.name===a)
+    const p2 = kp.find(p=>p.name===b)
+    if (!p1 || !p2) return
 
-  ctx.beginPath()
-  ctx.moveTo(0, canvas.height * 0.8)
-  ctx.lineTo(canvas.width, canvas.height * 0.8)
-  ctx.stroke()
+    const c1 = p1.score ?? p1.confidence ?? 0
+    const c2 = p2.score ?? p2.confidence ?? 0
 
-  ctx.fillStyle = "yellow"
-  ctx.fillText("ここに立つ", canvas.width/2 - 40, canvas.height*0.8 - 10)
-}
-
-function drawKeypoints(keypoints) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  drawGuide()
-
-  keypoints.forEach(p => {
-    if (p.score > 0.4) {
+    if (c1 > 0.3 && c2 > 0.3) {
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
-      ctx.fillStyle = "lime"
-      ctx.fill()
+      ctx.moveTo(p1.x,p1.y)
+      ctx.lineTo(p2.x,p2.y)
+      ctx.stroke()
     }
   })
 }
 
+// ===== 点描画（修正版） =====
+function drawKeypoints(keypoints) {
+  ctx.clearRect(0,0,canvas.width,canvas.height)
+
+  drawGuide()
+
+  keypoints.forEach(p=>{
+    const conf = p.score ?? p.confidence ?? 0
+    if (conf > 0.3) {
+      ctx.beginPath()
+      ctx.arc(p.x,p.y,6,0,Math.PI*2)
+      ctx.fillStyle="lime"
+      ctx.fill()
+    }
+  })
+
+  drawSkeleton(keypoints)
+}
+
+// ===== ガイド =====
+function drawGuide() {
+  ctx.strokeStyle="yellow"
+  ctx.beginPath()
+  ctx.moveTo(canvas.width/2,0)
+  ctx.lineTo(canvas.width/2,canvas.height)
+  ctx.stroke()
+}
+
+// ===== ループ =====
 async function gameLoop() {
   if (!running) return
 
   const poses = await detector.estimatePoses(video)
 
   if (poses[0]) {
-    const keypoints = poses[0].keypoints
-    drawKeypoints(keypoints)
+    const kp = poses[0].keypoints
+    drawKeypoints(kp)
 
     if (!basePose) {
-      setBasePose(keypoints)
-      instructionEl.textContent = "中央に立ってください"
+      setBasePose(kp)
+      instructionEl.textContent="中央に立ってください"
       return
     }
 
     if (judging) {
-      const isCorrect = checkPose(keypoints)
-      checkHold(isCorrect)
+      checkHold(checkPose(kp))
     }
   }
 
   requestAnimationFrame(gameLoop)
 }
 
-function getInterval() {
-  const diff = difficultySelect.value
-  if (diff === "easy") return 2500
-  if (diff === "normal") return 1800
-  return 1200
-}
-
-let timer
-
-function startGame() {
-  score = 0
-  combo = 0
-  running = true
-  basePose = null
-
-  scoreEl.textContent = "Score: 0"
-  comboEl.textContent = "Combo: 0"
-  timeEl.textContent = "Time: 2:00"
-
-  newInstruction()
-
-  clearInterval(timer)
-  timer = setInterval(() => {
-    if (judging) fail()
-  }, getInterval())
-
-  startTimer() // ★ここ追加
-
-  gameLoop()
-}
-
+// ===== スタート =====
 startBtn.onclick = async () => {
-  bgm.currentTime = 0
-  bgm.volume = 0.5
   bgm.play().catch(()=>{})
-
   await setupCamera()
   await setupModel()
 
-  startGame()
+  running = true
+  score = 0
+  combo = 0
+  basePose = null
+
+  scoreEl.textContent="Score: 0"
+  comboEl.textContent="Combo: 0"
+
+  newInstruction()
+  startTimer()
+  gameLoop()
 }
