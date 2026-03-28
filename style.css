@@ -19,7 +19,6 @@ video {
 canvas {
   transform: scaleX(-1); /* ★必ずvideoと同じにする */
 }
-
 .ui {
   position: fixed;
   bottom: 10px;
