@@ -1,15 +1,13 @@
 body {
   margin: 0;
   text-align: center;
-  font-family: sans-serif;
   background: black;
   color: white;
+  font-family: sans-serif;
 }
 
 video, canvas {
   position: absolute;
-  top: 0;
-  left: 0;
   width: 100%;
 }
 
@@ -17,21 +15,9 @@ video, canvas {
   position: fixed;
   bottom: 10px;
   width: 100%;
-  z-index: 10;
 }
 
-#instruction {
-  font-size: 32px;
-  font-weight: bold;
-}
-
-#score, #combo, #time {
+p {
   font-size: 22px;
   font-weight: bold;
-}
-
-button, select {
-  font-size: 18px;
-  padding: 10px;
-  margin: 5px;
 }
