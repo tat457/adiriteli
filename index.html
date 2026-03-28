@@ -1,42 +1,50 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARアジリティ PRO</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
+body {
+  margin: 0;
+  text-align: center;
+  font-family: sans-serif;
+  background: black;
+  color: white;
+}
 
-<h1>ARアジリティ PRO</h1>
+video, canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
 
-<video id="video" autoplay playsinline muted></video>
-<canvas id="canvas"></canvas>
+.ui {
+  position: fixed;
+  bottom: 10px;
+  width: 100%;
+  z-index: 10;
+}
 
-<!-- ★フラッシュ用 -->
-<div id="flashEffect"></div>
+#instruction {
+  font-size: 32px;
+  font-weight: bold;
+}
 
-<audio id="bgm" src="ajiritelibgm.mp3" loop></audio>
-<audio id="seikaiSound" src="seikai.mp3"></audio>
-<audio id="huseikaiSound" src="huseikai.mp3"></audio>
+#score, #combo {
+  font-size: 22px;
+  font-weight: bold;
+}
 
-<div class="ui">
-  <p id="instruction">スタートを押して開始</p>
-  <p id="score">Score: 0</p>
-  <p id="combo">Combo: 0</p>
+button, select {
+  font-size: 18px;
+  padding: 10px;
+  margin: 5px;
+}
 
-  <select id="difficulty">
-    <option value="easy">かんたん</option>
-    <option value="normal">ふつう</option>
-    <option value="hard">むずかしい</option>
-  </select>
-
-  <button id="startBtn">スタート</button>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-<script src="script.js"></script>
-
-</body>
-</html>
+/* ★フラッシュ演出 */
+#flashEffect {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 20;
+}
