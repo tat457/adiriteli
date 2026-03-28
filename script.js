@@ -207,10 +207,9 @@ function drawKeypoints(kp){
     if(conf(p)>0.2){
       ctx.beginPath()
 
-      // ★ここが超重要（左右反転対応）
-      const x = canvas.width - p.x
+      // ★これに戻す
+      ctx.arc(p.x, p.y, 6, 0, Math.PI*2)
 
-      ctx.arc(x, p.y, 6, 0, Math.PI*2)
       ctx.fillStyle="lime"
       ctx.fill()
     }
