@@ -15,7 +15,7 @@ const huseikaiSound = document.getElementById("huseikaiSound")
 let detector
 let running = false
 let judging = false
-let isTransition = false   // ★インターバル中フラグ
+let isTransition = false
 
 let score = 0
 let combo = 0
@@ -35,7 +35,6 @@ const actionLabels = {
   right: "右"
 }
 
-// ★keypoints index
 const KP = {
   LEFT_HIP: 11,
   RIGHT_HIP: 12,
@@ -45,6 +44,17 @@ const KP = {
 
 function conf(p){
   return p?.score ?? p?.confidence ?? 0
+}
+
+// ===== フラッシュ =====
+function flash(color){
+  const el = document.getElementById("flashEffect")
+  el.style.background = color
+  el.style.opacity = 0.6
+
+  setTimeout(()=>{
+    el.style.opacity = 0
+  }, 200)
 }
 
 // ===== 音 =====
@@ -131,7 +141,7 @@ function checkPose(kp){
   switch(currentAction){
     case "jump": return ankleMove > 30 || hipMoveY < -30
     case "squat": return hipMoveY > 30
-    case "left": return hipMoveX > 40
+    case "left": return hipMoveX > 40   // ★反転済み
     case "right": return hipMoveX < -40
   }
 }
@@ -142,9 +152,7 @@ function checkHold(ok){
 
   if(ok){
     if(!holdStartTime) holdStartTime = now
-    else if(now - holdStartTime > 300){
-      success()
-    }
+    else if(now - holdStartTime > 300) success()
   } else {
     holdStartTime = null
   }
@@ -164,11 +172,12 @@ function success(){
   comboEl.textContent = "Combo: " + combo
 
   instructionEl.textContent = "成功"
+  flash("lime")
   playSound(seikaiSound)
 
   setTimeout(()=>{
     if(running) newInstruction()
-  }, 1000) // ★1秒インターバル
+  }, 1000)
 }
 
 // ===== 失敗 =====
@@ -182,11 +191,12 @@ function fail(){
   comboEl.textContent = "Combo: 0"
 
   instructionEl.textContent = "失敗"
+  flash("red")
   playSound(huseikaiSound)
 
   setTimeout(()=>{
     if(running) newInstruction()
-  }, 1000) // ★1秒インターバル
+  }, 1000)
 }
 
 // ===== 描画 =====
