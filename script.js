@@ -256,6 +256,13 @@ function getInterval(){
 let timer
 
 function startGame(){
+  running = false
+  judging = false
+  isTransition = false
+  
+  clearInterval(timer)
+  timer = null  
+  
   score=0
   combo=0
   running=true
