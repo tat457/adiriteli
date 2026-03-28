@@ -27,6 +27,10 @@ const GAME_TIME = 120000
 let gameStartTime = 0
 let timeInterval = null
 
+// ★追加：指示ごとの制限時間
+let actionTimer = null
+const ACTION_TIME = 2000
+
 const actions = ["jump","squat","left","right"]
 
 const actionLabels = {
@@ -42,7 +46,6 @@ function conf(p){ return p?.score ?? p?.confidence ?? 0 }
 async function setupCamera(){
   const stream = await navigator.mediaDevices.getUserMedia({video:true})
   video.srcObject = stream
-
   return new Promise(resolve=>{
     video.onloadedmetadata = ()=>{
       canvas.width = video.videoWidth
@@ -59,7 +62,7 @@ async function setupModel(){
   )
 }
 
-// ===== 基準取得 =====
+// ===== 基準 =====
 function setBasePose(kp){
   const lHip = kp.find(p=>p.name==="left_hip")
   const rHip = kp.find(p=>p.name==="right_hip")
@@ -82,8 +85,15 @@ function setBasePose(kp){
 function newInstruction(){
   currentAction = actions[Math.floor(Math.random()*actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
+
   judging = true
   holdStartTime = null
+
+  // ★制限時間で自動失敗
+  clearTimeout(actionTimer)
+  actionTimer = setTimeout(()=>{
+    if(judging) fail()
+  }, ACTION_TIME)
 }
 
 // ===== 判定 =====
@@ -120,32 +130,49 @@ function checkPose(kp){
 // ===== 0.3秒維持 =====
 function checkHold(ok){
   const now = Date.now()
+
   if(ok){
     if(!holdStartTime) holdStartTime = now
-    else if(now - holdStartTime > 300) success()
-  }else{
+    else if(now - holdStartTime > 300){
+      success()
+    }
+  } else {
     holdStartTime = null
   }
 }
 
-// ===== 成功 / 失敗 =====
+// ===== 成功 =====
 function success(){
+  if(!judging) return
+
   judging=false
+  clearTimeout(actionTimer)
+
   combo++
   score+=10*combo
+
   scoreEl.textContent="Score:"+score
   comboEl.textContent="Combo:"+combo
+
   instructionEl.textContent="成功"
   seikaiSound.play()
+
   setTimeout(newInstruction,800)
 }
 
+// ===== 失敗 =====
 function fail(){
+  if(!judging) return
+
   judging=false
+  clearTimeout(actionTimer)
+
   combo=0
   comboEl.textContent="Combo:0"
+
   instructionEl.textContent="失敗"
   huseikaiSound.play()
+
   setTimeout(newInstruction,800)
 }
 
@@ -181,14 +208,11 @@ function endGame(){
 function draw(kp){
   ctx.clearRect(0,0,canvas.width,canvas.height)
 
-  const scaleX = canvas.width / video.videoWidth
-  const scaleY = canvas.height / video.videoHeight
-
   kp.forEach(p=>{
     const c=conf(p)
     if(c>0.3){
       ctx.beginPath()
-      ctx.arc(p.x*scaleX,p.y*scaleY,6,0,Math.PI*2)
+      ctx.arc(p.x,p.y,6,0,Math.PI*2)
       ctx.fillStyle="lime"
       ctx.fill()
     }
@@ -207,9 +231,8 @@ async function loop(){
     draw(kp)
     setBasePose(kp)
 
-    // ★ここが修正ポイント
     if(!baseHip){
-      instructionEl.textContent="中央に立つ（腰が映る）"
+      instructionEl.textContent="中央に立つ（腰）"
     } else {
       if(!judging) newInstruction()
       if(judging) checkHold(checkPose(kp))
