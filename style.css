@@ -12,13 +12,15 @@ video, canvas {
   left: 0;
   width: 100%;
 }
+
 video {
-  transform: scaleX(-1); /* ★これで正しい向きに見える */
+  transform: scaleX(-1);
 }
 
 canvas {
-  transform: scaleX(-1); /* ★必ずvideoと同じにする */
+  transform: scaleX(-1);
 }
+
 .ui {
   position: fixed;
   bottom: 10px;
@@ -42,7 +44,6 @@ button, select {
   margin: 5px;
 }
 
-/* ★フラッシュ演出 */
 #flashEffect {
   position: fixed;
   top: 0;
