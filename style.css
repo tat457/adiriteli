@@ -12,6 +12,13 @@ video, canvas {
   left: 0;
   width: 100%;
 }
+video {
+  transform: scaleX(-1);
+}
+
+canvas {
+  transform: scaleX(-1);
+}
 
 .ui {
   position: fixed;
