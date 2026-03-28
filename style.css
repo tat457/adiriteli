@@ -12,6 +12,13 @@ video, canvas {
   left: 0;
   width: 100%;
 }
+video {
+  transform: scaleX(-1); /* ★これで正しい向きに見える */
+}
+
+canvas {
+  transform: scaleX(-1); /* ★必ずvideoと同じにする */
+}
 
 .ui {
   position: fixed;
