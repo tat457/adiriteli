@@ -220,6 +220,8 @@ function drawKeypoints(kp){
 async function gameLoop(){
   if(!running) return
 
+  console.log("detecting") // ←ここ（OK）
+  
   const poses = await detector.estimatePoses(video)
 
   if(poses[0]){
