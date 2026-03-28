@@ -131,8 +131,8 @@ function checkPose(kp){
   switch(currentAction){
     case "jump": return ankleMove > 30 || hipMoveY < -30
     case "squat": return hipMoveY > 30
-    case "left": return hipMoveX < -40
-    case "right": return hipMoveX > 40
+    case "left": return hipMoveX > 40
+    case "right": return hipMoveX < -40
   }
 }
 
