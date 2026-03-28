@@ -65,7 +65,9 @@ function playSound(sound){
 
 // ===== カメラ =====
 async function setupCamera(){
-  const stream = await navigator.mediaDevices.getUserMedia({video:true})
+  const stream = await navigator.mediaDevices.getUserMedia({
+  video: { facingMode: "user" }
+})
   video.srcObject = stream
 
   return new Promise(resolve=>{
