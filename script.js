@@ -8,21 +8,19 @@ const comboEl = document.getElementById("combo")
 const startBtn = document.getElementById("startBtn")
 const difficultySelect = document.getElementById("difficulty")
 
+// 音
 const bgm = document.getElementById("bgm")
 const seikaiSound = document.getElementById("seikaiSound")
 const huseikaiSound = document.getElementById("huseikaiSound")
 
 let detector
 let running = false
-let judging = false
 
 let score = 0
 let combo = 0
 let currentAction = ""
-let holdStartTime = null
-let basePose = null
 
-const actions = ["jump","squat","left","right"]
+const actions = ["jump", "squat", "left", "right"]
 
 const actionLabels = {
   jump: "ジャンプ",
@@ -31,91 +29,61 @@ const actionLabels = {
   right: "右"
 }
 
-function conf(p){ return p?.score ?? p?.confidence ?? 0 }
+// 音再生（確実用）
+function playSound(sound) {
+  sound.currentTime = 0
+  sound.play().catch(()=>{})
+}
 
-// ===== カメラ =====
+// カメラ
 async function setupCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: true })
   video.srcObject = stream
-
   return new Promise(resolve => {
     video.onloadedmetadata = () => {
-      // ★ここ重要：完全一致
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-
-      video.width = video.videoWidth
-      video.height = video.videoHeight
-
       resolve()
     }
   })
 }
 
-// ===== モデル =====
+// モデル
 async function setupModel() {
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet
   )
 }
 
-// ===== 基準 =====
-function setBasePose(kp) {
-  const hip = kp.find(k => k.name === "left_hip")
-  const ankle = kp.find(k => k.name === "left_ankle")
-
-  if (hip && ankle && conf(hip) > 0.3) {
-    basePose = {
-      hipY: hip.y,
-      ankleY: ankle.y,
-      hipX: hip.x
-    }
-  }
-}
-
-// ===== 指示 =====
+// 指示
 function newInstruction() {
   currentAction = actions[Math.floor(Math.random() * actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
-  judging = true
-  holdStartTime = null
 }
 
-// ===== 判定 =====
-function checkPose(kp) {
-  if (!basePose) return false
+// 判定
+function checkPose(keypoints) {
+  const nose = keypoints.find(k => k.name === "nose")
+  const leftAnkle = keypoints.find(k => k.name === "left_ankle")
+  const rightAnkle = keypoints.find(k => k.name === "right_ankle")
+  const leftHip = keypoints.find(k => k.name === "left_hip")
 
-  const hip = kp.find(k => k.name === "left_hip")
-  const ankle = kp.find(k => k.name === "left_ankle")
+  if (!nose || !leftAnkle || !rightAnkle || !leftHip) return false
 
-  if (!hip) return false
-
-  const hipMoveY = hip.y - basePose.hipY
-  const hipMoveX = hip.x - basePose.hipX
-  const ankleMove = ankle ? basePose.ankleY - ankle.y : 0
-
-  switch(currentAction){
-    case "jump": return ankleMove > 30 || hipMoveY < -30
-    case "squat": return hipMoveY > 30
-    case "left": return hipMoveX < -40
-    case "right": return hipMoveX > 40
+  switch (currentAction) {
+    case "jump":
+      return leftAnkle.y < nose.y
+    case "squat":
+      return leftHip.y > nose.y
+    case "left":
+      return leftAnkle.x < rightAnkle.x - 50
+    case "right":
+      return rightAnkle.x > leftAnkle.x + 50
   }
 }
 
-// ===== 判定保持 =====
-function checkHold(ok){
-  const now = Date.now()
-  if(ok){
-    if(!holdStartTime) holdStartTime = now
-    else if(now - holdStartTime > 300) success()
-  } else {
-    holdStartTime = null
-  }
-}
-
-// ===== 成功 =====
-function success(){
-  judging=false
+// 成功
+function success() {
   combo++
   score += 10 * combo
 
@@ -123,105 +91,96 @@ function success(){
   comboEl.textContent = "Combo: " + combo
 
   instructionEl.textContent = "成功"
-  playSound(seikaiSound)
+  flash("green")
 
-  setTimeout(newInstruction,800)
+  playSound(seikaiSound)
 }
 
-// ===== 失敗 =====
-function fail(){
-  judging=false
-  combo=0
+// 失敗
+function fail() {
+  combo = 0
   comboEl.textContent = "Combo: 0"
 
   instructionEl.textContent = "失敗"
+  flash("red")
+
   playSound(huseikaiSound)
-
-  setTimeout(newInstruction,800)
 }
 
-function playSound(sound){
-  sound.currentTime = 0
-  sound.play().catch(()=>{})
+// エフェクト
+function flash(color) {
+  document.body.style.background = color
+  setTimeout(() => {
+    document.body.style.background = "black"
+  }, 120)
 }
 
-// ===== 描画（スケールなしに修正）=====
-function drawKeypoints(kp){
-  ctx.clearRect(0,0,canvas.width,canvas.height)
-
-  kp.forEach(p=>{
-    if(conf(p) > 0.2){
+// 描画
+function drawKeypoints(keypoints) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  keypoints.forEach(p => {
+    if (p.score > 0.3) {
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 6, 0, Math.PI*2)
-      ctx.fillStyle="lime"
+      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
+      ctx.fillStyle = "lime"
       ctx.fill()
     }
   })
 }
 
-// ===== ループ =====
-async function gameLoop(){
-  if(!running) return
-
-  // ★毎フレーム同期（重要）
-  if(video.videoWidth){
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-  }
+// ループ
+async function gameLoop() {
+  if (!running) return
 
   const poses = await detector.estimatePoses(video)
 
-  if(poses[0]){
-    const kp = poses[0].keypoints
+  if (poses[0]) {
+    const keypoints = poses[0].keypoints
+    drawKeypoints(keypoints)
 
-    drawKeypoints(kp)
-
-    if(!basePose){
-      setBasePose(kp)
-      instructionEl.textContent="そのまま立ってください"
-      return
-    }
-
-    if(judging){
-      checkHold(checkPose(kp))
+    if (checkPose(keypoints)) {
+      success()
+      newInstruction()
     }
   }
 
   requestAnimationFrame(gameLoop)
 }
 
-// ===== 難易度 =====
-function getInterval(){
+// 難易度
+function getInterval() {
   const diff = difficultySelect.value
-  if(diff==="easy") return 2500
-  if(diff==="normal") return 1800
-  return 1200
+  if (diff === "easy") return 2000
+  if (diff === "normal") return 1300
+  return 800
 }
 
+// スタート
 let timer
 
-function startGame(){
-  score=0
-  combo=0
-  running=true
-  basePose=null
+function startGame() {
+  score = 0
+  combo = 0
+  running = true
 
-  scoreEl.textContent="Score: 0"
-  comboEl.textContent="Combo: 0"
+  scoreEl.textContent = "Score: 0"
+  comboEl.textContent = "Combo: 0"
 
   newInstruction()
 
   clearInterval(timer)
-  timer=setInterval(()=>{
-    if(judging) fail()
+  timer = setInterval(() => {
+    fail()
+    newInstruction()
   }, getInterval())
 
   gameLoop()
 }
 
-// ===== スタート =====
-startBtn.onclick = async ()=>{
-  bgm.volume=0.5
+// 初期化
+startBtn.onclick = async () => {
+  // BGM再生（確実）
+  bgm.volume = 0.5
   bgm.play().catch(()=>{})
 
   await setupCamera()
