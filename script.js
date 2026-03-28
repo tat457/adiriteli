@@ -132,7 +132,7 @@ function checkPose(kp){
     const ankleY = (lAnk.y + rAnk.y)/2
     ankleMove = baseAnkleY - ankleY
   }
-
+  console.log("ankle:", ankleMove, "hip:", hipMoveY)
   switch(currentAction){
     case "jump":
   　　　return ankleMove > 20 && hipMoveY < -20
