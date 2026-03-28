@@ -2,11 +2,10 @@ body {
   margin: 0;
   background: black;
   overflow: hidden;
-  font-family: sans-serif;
   color: white;
+  font-family: sans-serif;
 }
 
-/* ★ここが超重要 */
 video, canvas {
   position: absolute;
   top: 0;
@@ -16,7 +15,6 @@ video, canvas {
   object-fit: cover;
 }
 
-/* UI */
 .ui {
   position: fixed;
   bottom: 10px;
@@ -26,7 +24,7 @@ video, canvas {
 }
 
 p {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: bold;
 }
 
