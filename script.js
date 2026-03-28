@@ -15,6 +15,7 @@ const huseikaiSound = document.getElementById("huseikaiSound")
 let detector
 let running = false
 let judging = false
+let isTransition = false   // ★インターバル中フラグ
 
 let score = 0
 let combo = 0
@@ -34,9 +35,8 @@ const actionLabels = {
   right: "右"
 }
 
-// ★ インデックス対応（重要）
+// ★keypoints index
 const KP = {
-  NOSE: 0,
   LEFT_HIP: 11,
   RIGHT_HIP: 12,
   LEFT_ANKLE: 15,
@@ -45,6 +45,12 @@ const KP = {
 
 function conf(p){
   return p?.score ?? p?.confidence ?? 0
+}
+
+// ===== 音 =====
+function playSound(sound){
+  sound.currentTime = 0
+  sound.play().catch(()=>{})
 }
 
 // ===== カメラ =====
@@ -93,8 +99,10 @@ function setBasePose(kp){
 function newInstruction(){
   currentAction = actions[Math.floor(Math.random()*actions.length)]
   instructionEl.textContent = "指示: " + actionLabels[currentAction]
+
   judging = true
   holdStartTime = null
+  isTransition = false
 }
 
 // ===== 判定 =====
@@ -121,23 +129,22 @@ function checkPose(kp){
   }
 
   switch(currentAction){
-    case "jump":
-      return ankleMove > 30 || hipMoveY < -30
-    case "squat":
-      return hipMoveY > 30
-    case "left":
-      return hipMoveX < -40
-    case "right":
-      return hipMoveX > 40
+    case "jump": return ankleMove > 30 || hipMoveY < -30
+    case "squat": return hipMoveY > 30
+    case "left": return hipMoveX < -40
+    case "right": return hipMoveX > 40
   }
 }
 
 // ===== 0.3秒維持 =====
 function checkHold(ok){
   const now = Date.now()
+
   if(ok){
     if(!holdStartTime) holdStartTime = now
-    else if(now - holdStartTime > 300) success()
+    else if(now - holdStartTime > 300){
+      success()
+    }
   } else {
     holdStartTime = null
   }
@@ -145,29 +152,41 @@ function checkHold(ok){
 
 // ===== 成功 =====
 function success(){
-  judging=false
+  if(isTransition) return
+
+  judging = false
+  isTransition = true
+
   combo++
-  score+=10*combo
+  score += 10 * combo
 
-  scoreEl.textContent="Score: "+score
-  comboEl.textContent="Combo: "+combo
+  scoreEl.textContent = "Score: " + score
+  comboEl.textContent = "Combo: " + combo
 
-  instructionEl.textContent="成功"
-  seikaiSound.play()
+  instructionEl.textContent = "成功"
+  playSound(seikaiSound)
 
-  setTimeout(newInstruction,800)
+  setTimeout(()=>{
+    if(running) newInstruction()
+  }, 1000) // ★1秒インターバル
 }
 
 // ===== 失敗 =====
 function fail(){
-  judging=false
-  combo=0
-  comboEl.textContent="Combo: 0"
+  if(isTransition) return
 
-  instructionEl.textContent="失敗"
-  huseikaiSound.play()
+  judging = false
+  isTransition = true
 
-  setTimeout(newInstruction,800)
+  combo = 0
+  comboEl.textContent = "Combo: 0"
+
+  instructionEl.textContent = "失敗"
+  playSound(huseikaiSound)
+
+  setTimeout(()=>{
+    if(running) newInstruction()
+  }, 1000) // ★1秒インターバル
 }
 
 // ===== 描画 =====
@@ -201,7 +220,7 @@ async function gameLoop(){
       return
     }
 
-    if(judging){
+    if(judging && !isTransition){
       checkHold(checkPose(kp))
     }
   }
@@ -235,7 +254,7 @@ function startGame(){
 
   clearInterval(timer)
   timer=setInterval(()=>{
-    if(judging) fail()
+    if(judging && !isTransition) fail()
   }, getInterval())
 
   gameLoop()
