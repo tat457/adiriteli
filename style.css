@@ -30,6 +30,12 @@ video, canvas {
   font-weight: bold;
 }
 
+#time {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffd700;
+}
+
 button, select {
   font-size: 18px;
   padding: 10px;
