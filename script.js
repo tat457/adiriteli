@@ -29,10 +29,10 @@ let baseAnkleY = null
 const actions = ["jump","squat","left","right"]
 
 const actionLabels = {
-  jump: "ジャンプ",
-  squat: "しゃがむ",
-  left: "左",
-  right: "右"
+  jump: "↑ジャンプ",
+  squat: "↓しゃがむ",
+  left: "←ひだり",
+  right: "→みぎ"
 }
 
 const KP = {
