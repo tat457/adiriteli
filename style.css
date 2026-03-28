@@ -1,34 +1,37 @@
 body {
   margin: 0;
-  background: black;
-  overflow: hidden;
-  color: white;
+  text-align: center;
   font-family: sans-serif;
+  background: black;
+  color: white;
 }
 
 video, canvas {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
+  width: 100%;
 }
 
 .ui {
   position: fixed;
   bottom: 10px;
   width: 100%;
-  text-align: center;
   z-index: 10;
 }
 
-p {
-  font-size: 24px;
+#instruction {
+  font-size: 32px;
   font-weight: bold;
 }
 
-button {
-  font-size: 20px;
-  padding: 10px 20px;
+#score, #combo {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+button, select {
+  font-size: 18px;
+  padding: 10px;
+  margin: 5px;
 }
