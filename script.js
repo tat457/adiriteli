@@ -66,7 +66,7 @@ function checkPose(keypoints) {
   const nose = keypoints.find(k => k.name === "nose")
   const leftAnkle = keypoints.find(k => k.name === "left_ankle")
   const rightAnkle = keypoints.find(k => k.name === "right_ankle")
-  const leftHip = keypoints.find(k => k.name === "left_hip")
+  const hip = keypoints.find(k => k.name === "left_hip")
 
   if (!nose || !leftAnkle || !rightAnkle || !leftHip) return false
 
@@ -76,9 +76,9 @@ function checkPose(keypoints) {
     case "squat":
       return leftHip.y > nose.y
     case "left":
-  　　　return leftAnkle.x > rightAnkle.x + 50
+  　　　return hip.x < nose.x - 40
 　　　case "right":
-  　　　return rightAnkle.x < leftAnkle.x - 50
+  　　　return hip.x > nose.x + 40
   }
 }
 
