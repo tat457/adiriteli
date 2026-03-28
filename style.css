@@ -25,15 +25,9 @@ video, canvas {
   font-weight: bold;
 }
 
-#score, #combo {
+#score, #combo, #time {
   font-size: 22px;
   font-weight: bold;
-}
-
-#time {
-  font-size: 24px;
-  font-weight: bold;
-  color: #ffd700;
 }
 
 button, select {
