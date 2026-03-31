@@ -235,9 +235,9 @@ async function gameLoop(){
 // ===== 難易度 =====
 function getInterval(){
   const diff = difficultySelect.value
-  if(diff==="easy") return 2500
-  if(diff==="normal") return 1800
-  return 1200
+  if(diff==="easy") return 3000
+  if(diff==="normal") return 2200
+  return 1800
 }
 
 let timer
